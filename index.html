@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S.Tech Waterproofing</title>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#eef2f7;
+  padding-bottom:80px;
+}
+
+.header{
+  background:linear-gradient(90deg,#0077b6,#00b4d8);
+  color:white;
+  padding:15px;
+  text-align:center;
+  font-size:18px;
+  font-weight:bold;
+}
+
+.card{
+  background:white;
+  margin:12px;
+  padding:12px;
+  border-radius:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.1);
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.cardBtn{
+  background:#f1f5f9;
+  border-radius:16px;
+  padding:18px;
+  text-align:center;
+  box-shadow:0 6px 12px rgba(0,0,0,0.1);
+  font-size:14px;
+}
+
+.cardBtn:active{transform:scale(0.95);}
+
+.icon{
+  font-size:26px;
+  display:block;
+  margin-bottom:6px;
+}
+
+.exitBtn{
+  grid-column:span 2;
+  background:#ffe5e5;
+  color:#d00000;
+  font-weight:bold;
+}
+
+textarea,input{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+  border-radius:10px;
+  border:1px solid #ccc;
+}
+
+button{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+  border:none;
+  border-radius:10px;
+  background:#0077b6;
+  color:white;
+}
+
+.backBtn{
+  background:#6c757d;
+}
+
+.bottomBar{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:white;
+  padding:10px;
+  box-shadow:0 -2px 10px rgba(0,0,0,0.1);
+}
+
+#notebook{
+  white-space:pre-wrap;
+  max-height:60vh;
+  overflow:auto;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">S.Tech Waterproofing</div>
+
+<div class="card">
+  <div id="mainBtns"></div>
+  <div id="box"></div>
+</div>
+
+<div class="card" id="dataBox" style="display:none;"></div>
+<div class="card" id="notebook" style="display:none;"></div>
+
+<div class="bottomBar">
+  <button onclick="showData()">📊 Show Data</button>
+</div>
+
+<script>
+
+// STORAGE
+function getData(){return localStorage.getItem("data")||"";}
+function setData(d){localStorage.setItem("data",d);}
+
+// DATE
+function date(){
+  let d=new Date();
+  return String(d.getDate()).padStart(2,'0')+"/"+
+         String(d.getMonth()+1).padStart(2,'0')+"/"+
+         d.getFullYear();
+}
+
+// TIME FORMAT
+function formatTime(t){
+  let[h,m]=t.split(":");
+  let ampm=h>=12?"PM":"AM";
+  h=h%12||12;
+  return h+":"+m+" "+ampm;
+}
+
+// INIT
+function init(){
+  let data=getData().trim();
+  if(!data){ showStart(); return; }
+
+  let lines=data.split("\n").reverse();
+  let hasEntry=false;
+
+  for(let line of lines){
+    if(line.startsWith("Exit:-")) break;
+    if(line.startsWith("Entry:-")) hasEntry=true;
+    if(line.startsWith("DATE:")) break;
+  }
+
+  if(hasEntry) showWorkButtons();
+  else openSite();
+}
+init();
+
+// START
+function showStart(){
+  mainBtns.innerHTML=`<button onclick="openSite()">➕ Start Site</button>`;
+  mainBtns.style.display="block";
+  box.innerHTML="";
+}
+
+// BACK
+function backToMain(){
+  box.innerHTML="";
+  init();
+}
+
+// SITE
+function openSite(){
+  mainBtns.style.display="none";
+  box.innerHTML=`
+    <button class="backBtn" onclick="backToMain()">⬅ Back</button>
+    <textarea id="txt" placeholder="Enter Site Name"></textarea>
+    <button onclick="saveSite()">Save</button>
+  `;
+}
+
+function saveSite(){
+  let v=txt.value.trim();
+  if(!v)return alert("Enter site");
+  setData(getData()+`\nDATE: ${date()}\nSite:- ${v}\n`);
+  openEntry();
+}
+
+// ENTRY
+function openEntry(){
+  box.innerHTML=`
+    <button class="backBtn" onclick="backToMain()">⬅ Back</button>
+    <input type="time" id="time">
+    <button onclick="saveEntry()">Save Entry</button>
+  `;
+}
+
+function saveEntry(){
+  let t=time.value;
+  if(!t)return alert("Select time");
+  setData(getData()+`Entry:- ${formatTime(t)}\n`);
+  showWorkButtons();
+}
+
+// WORK BUTTONS
+function showWorkButtons(){
+  mainBtns.style.display="block";
+  box.innerHTML="";
+
+  mainBtns.innerHTML=`
+    <div class="grid">
+      <div class="cardBtn" onclick="openText('Worker')"><span class="icon">👷</span>Worker</div>
+      <div class="cardBtn" onclick="openText('Material')"><span class="icon">📦</span>Material</div>
+      <div class="cardBtn" onclick="openText('Work Note')"><span class="icon">📝</span>Work Note</div>
+      <div class="cardBtn" onclick="openText('Note')"><span class="icon">📓</span>Note</div>
+      <div class="cardBtn exitBtn" onclick="openExit()"><span class="icon">🚪</span>Exit</div>
+    </div>
+  `;
+}
+
+// TEXT INPUT
+function openText(type){
+  mainBtns.style.display="none";
+  box.innerHTML=`
+    <button class="backBtn" onclick="showWorkButtons()">⬅ Back</button>
+    <textarea id="txt" placeholder="${type}"></textarea>
+    <button onclick="saveText('${type}')">Save</button>
+  `;
+}
+
+function saveText(type){
+  let v=txt.value.trim();
+  if(!v)return alert("Empty");
+
+  if(type==="Worker"){
+    let names=v.split(",").map(x=>x.trim()).filter(x=>x);
+    v=names.length+" ("+names.join(", ")+")";
+  }
+
+  setData(getData()+`${type}:- ${v}\n`);
+  showWorkButtons();
+}
+
+// EXIT
+function openExit(){
+  mainBtns.style.display="none";
+  box.innerHTML=`
+    <button class="backBtn" onclick="showWorkButtons()">⬅ Back</button>
+    <input type="time" id="time">
+    <button onclick="saveExit()">Save Exit</button>
+  `;
+}
+
+function saveExit(){
+  let t=time.value;
+  if(!t)return alert("Select time");
+  setData(getData()+`Exit:- ${formatTime(t)}\n\n`);
+  showStart();
+}
+
+// DATA VIEW
+function showData(){
+  mainBtns.style.display="none";
+  box.innerHTML="";
+
+  dataBox.style.display="block";
+  notebook.style.display="block";
+
+  dataBox.innerHTML=`
+    <button onclick="hideData()">⬅ Hide</button>
+    <button onclick="editData()">✏ Edit</button>
+    <button onclick="clearData()">🗑 Clear</button>
+    <button onclick="download()">⬇ Download</button>
+  `;
+
+  notebook.innerText=getData();
+}
+
+function hideData(){
+  dataBox.style.display="none";
+  notebook.style.display="none";
+  init();
+}
+
+// PASSWORD
+function ask(cb){
+  let p=prompt("Enter Password","");
+  if(p==="5252") cb();
+  else alert("Wrong Password");
+}
+
+// EDIT
+function editData(){
+  ask(()=>{
+    box.innerHTML=`
+      <button class="backBtn" onclick="hideData()">⬅ Back</button>
+      <textarea id="edit" style="height:60vh">${getData()}</textarea>
+      <button onclick="saveEdit()">Save</button>
+    `;
+  });
+}
+
+function saveEdit(){
+  setData(edit.value);
+  location.reload();
+}
+
+// DOWNLOAD
+function download(){
+  let d=getData();
+  let now=new Date();
+  let name=`Stech Jay Data (${now.getDate()}-${now.getMonth()+1}-${now.getFullYear()}).txt`;
+
+  let blob=new Blob([d],{type:"text/plain"});
+  let a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  a.click();
+}
+
+// CLEAR
+function clearData(){
+  ask(()=>{
+    download();
+    localStorage.removeItem("data");
+    location.reload();
+  });
+}
+
+</script>
+
+</body>
+</html>
