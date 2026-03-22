@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Site Data</title>
+
+<style>
+body{
+  margin:0;
+  font-family:sans-serif;
+  background:#eef2f7;
+  padding-bottom:80px;
+}
+
+.header{
+  background:linear-gradient(90deg,#0077b6,#00b4d8);
+  color:white;
+  padding:15px;
+  text-align:center;
+  font-size:18px;
+  font-weight:bold;
+}
+
+.card{
+  background:white;
+  margin:12px;
+  padding:12px;
+  border-radius:16px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.1);
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.cardBtn{
+  background:#f1f5f9;
+  border-radius:16px;
+  padding:18px;
+  text-align:center;
+}
+
+.exitBtn{
+  grid-column:span 2;
+  background:#ffe5e5;
+  color:#d00000;
+}
+
+textarea,input{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+  border-radius:10px;
+  border:1px solid #ccc;
+}
+
+button{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+  border:none;
+  border-radius:10px;
+  background:#0077b6;
+  color:white;
+}
+
+.backBtn{background:#6c757d;}
+
+.bottomBar{
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:white;
+  padding:10px;
+  box-shadow:0 -2px 10px rgba(0,0,0,0.1);
+}
+
+#notebook{
+  white-space:pre-wrap;
+  max-height:60vh;
+  overflow:auto;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">Site Data</div>
+
+<div class="card">
+  <div id="mainBtns"></div>
+  <div id="box"></div>
+</div>
+
+<div class="card" id="dataBox" style="display:none;"></div>
+<div class="card" id="notebook" style="display:none;"></div>
+
+<div class="bottomBar">
+  <button onclick="showData()">📊 Show Data</button>
+</div>
+
+<script>
+
+// 🔐 STORAGE KEY
+const STORAGE_KEY = "site_data_v1";
+
+// STORAGE
+function getData(){ return localStorage.getItem(STORAGE_KEY) || ""; }
+function setData(d){ localStorage.setItem(STORAGE_KEY, d); }
+
+// DATE
+function date(){
+  let d=new Date();
+  return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear();
+}
+
+// 🚀 SMART APPEND (FAST)
+function append(entry){
+  let data = getData();
+  let today = "DATE: " + date();
+
+  let lines = data.trim().split("\n").reverse();
+  let lastDate = "";
+
+  for(let line of lines){
+    if(line.startsWith("DATE:")){
+      lastDate = line.trim();
+      break;
+    }
+  }
+
+  if(lastDate !== today){
+    data += "\n" + today + "\n";
+  }
+
+  data += entry + "\n";
+  setData(data);
+}
+
+// INIT
+function init(){
+  mainBtns.innerHTML=`
+    <div class="grid">
+      <div class="cardBtn" onclick="openText('Worker')">👷 Worker</div>
+      <div class="cardBtn" onclick="openText('Material')">📦 Material</div>
+      <div class="cardBtn" onclick="openText('Work Note')">📝 Work Note</div>
+      <div class="cardBtn" onclick="openText('Note')">📓 Note</div>
+      <div class="cardBtn exitBtn" onclick="openExit()">🚪 Exit</div>
+    </div>
+  `;
+  box.innerHTML="";
+}
+init();
+
+// BACK
+function back(){ init(); }
+
+// TEXT
+function openText(type){
+  mainBtns.innerHTML="";
+  box.innerHTML=`
+    <button class="backBtn" onclick="back()">⬅ Back</button>
+    <textarea id="txt" placeholder="${type}"></textarea>
+    <button onclick="saveText('${type}')">Save</button>
+  `;
+}
+
+function saveText(type){
+  let v=txt.value.trim();
+  if(!v)return alert("Empty");
+
+  if(type==="Worker"){
+    let names=v.split(",").map(x=>x.trim()).filter(x=>x);
+    v=names.length+" ("+names.join(", ")+")";
+  }
+
+  append(`${type}:- ${v}`);
+  back();
+}
+
+// EXIT
+function openExit(){
+  mainBtns.innerHTML="";
+  box.innerHTML=`
+    <button class="backBtn" onclick="back()">⬅ Back</button>
+    <input type="time" id="time">
+    <button onclick="saveExit()">Save Exit</button>
+  `;
+}
+
+function saveExit(){
+  let t=time.value;
+  if(!t)return alert("Select time");
+  append(`Exit:- ${t}`);
+  back();
+}
+
+// SHOW DATA
+function showData(){
+  mainBtns.innerHTML="";
+  box.innerHTML="";
+  dataBox.style.display="block";
+  notebook.style.display="block";
+
+  dataBox.innerHTML=`
+    <button onclick="hideData()">⬅ Hide</button>
+    <button onclick="editData()">✏ Edit</button>
+    <button onclick="copyData()">📋 Copy</button>
+    <button onclick="clearData()">🗑 Clear</button>
+  `;
+
+  notebook.innerText=getData();
+}
+
+// HIDE
+function hideData(){
+  dataBox.style.display="none";
+  notebook.style.display="none";
+  init();
+}
+
+// EDIT
+function editData(){
+  let p=prompt("Enter Password","");
+  if(p!=="5252") return alert("Wrong Password");
+
+  box.innerHTML=`
+    <button class="backBtn" onclick="showData()">⬅ Back</button>
+    <textarea id="edit" style="height:60vh">${getData()}</textarea>
+    <button onclick="saveEdit()">Save</button>
+  `;
+}
+
+function saveEdit(){
+  setData(edit.value || "");
+  location.reload();
+}
+
+// COPY
+function copyData(){
+  navigator.clipboard.writeText(getData());
+  alert("Copied!");
+}
+
+// CLEAR
+function clearData(){
+  let p=prompt("Enter Password","");
+  if(p==="5252"){
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }else alert("Wrong Password");
+}
+
+</script>
+
+</body>
+</html>
