@@ -38,9 +38,23 @@ body{
 
 .cardBtn{
   background:#f1f5f9;
-  padding:18px;
   border-radius:16px;
+  padding:18px;
   text-align:center;
+}
+
+.exitBtn{
+  grid-column:span 2;
+  background:#ffe5e5;
+  color:#d00000;
+}
+
+textarea,input{
+  width:100%;
+  padding:12px;
+  margin-top:8px;
+  border-radius:10px;
+  border:1px solid #ccc;
 }
 
 button{
@@ -53,16 +67,22 @@ button{
   color:white;
 }
 
-textarea,input{
+.backBtn{background:#6c757d;}
+
+.bottomBar{
+  position:fixed;
+  bottom:0;
   width:100%;
-  padding:12px;
-  margin-top:8px;
-  border-radius:10px;
-  border:1px solid #ccc;
+  background:white;
+  padding:10px;
+  box-shadow:0 -2px 10px rgba(0,0,0,0.1);
 }
 
-.backBtn{background:#6c757d;}
-.exitBtn{background:#d00000;}
+#notebook{
+  white-space:pre-wrap;
+  max-height:60vh;
+  overflow:auto;
+}
 </style>
 </head>
 
@@ -75,96 +95,86 @@ textarea,input{
   <div id="box"></div>
 </div>
 
+<div class="card" id="dataBox" style="display:none;"></div>
+<div class="card" id="notebook" style="display:none;"></div>
+
+<div class="bottomBar">
+  <button onclick="showData()">📊 Show Data</button>
+</div>
+
 <script>
 
-// 🔐 STORAGE KEY
-const KEY = "site_v2";
-
 // STORAGE
-function getData(){ return localStorage.getItem(KEY) || ""; }
+const KEY="site_data";
+
+function getData(){ return localStorage.getItem(KEY)||""; }
 function setData(d){ localStorage.setItem(KEY,d); }
 
 // DATE
-function today(){
+function date(){
   let d=new Date();
   return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear();
 }
 
-// 🚀 SMART STATE CHECK (FAST REVERSE SCAN)
+// 🔥 SMART STATE CHECK
 function getState(){
-
-  let data = getData().trim();
+  let data=getData().trim();
   if(!data) return "START";
 
-  let lines = data.split("\n").reverse();
-
-  let foundEntry=false;
-  let foundExit=false;
-  let lastDate="";
+  let lines=data.split("\n").reverse();
+  let hasEntry=false;
 
   for(let line of lines){
-
-    if(line.startsWith("DATE:") && !lastDate){
-      lastDate = line.replace("DATE: ","").trim();
-    }
-
-    if(line.startsWith("Exit:-")){
-      foundExit = true;
-      break;
-    }
-
-    if(line.startsWith("Entry:-")){
-      foundEntry = true;
-    }
+    if(line.startsWith("Exit:-")) return "START";
+    if(line.startsWith("Entry:-")) hasEntry=true;
+    if(line.startsWith("DATE:")) break;
   }
 
-  // LOGIC
-  if(foundEntry && !foundExit) return "WORK";
-  return "START";
+  return hasEntry ? "WORK" : "START";
 }
 
 // INIT
 function init(){
-
-  let state = getState();
+  let state=getState();
 
   if(state==="START"){
-    mainBtns.innerHTML = `<button onclick="openSite()">➕ Start Site</button>`;
-  }
-  else{
+    mainBtns.innerHTML=`<button onclick="openSite()">➕ Start Site</button>`;
+  }else{
     showWorkButtons();
   }
 
   box.innerHTML="";
 }
-
 init();
 
 // BACK
-function back(){ init(); }
+function backToMain(){
+  box.innerHTML="";
+  init();
+}
 
 // SITE
 function openSite(){
   mainBtns.innerHTML="";
   box.innerHTML=`
-    <button class="backBtn" onclick="back()">⬅ Back</button>
-    <textarea id="site" placeholder="Site Name"></textarea>
+    <button class="backBtn" onclick="backToMain()">⬅ Back</button>
+    <textarea id="txt" placeholder="Enter Site Name"></textarea>
     <button onclick="saveSite()">Save</button>
   `;
 }
 
 function saveSite(){
-  let v=site.value.trim();
-  if(!v) return alert("Enter site");
+  let v=txt.value.trim();
+  if(!v)return alert("Enter site");
 
-  let d = getData();
-  let t = "DATE: "+today();
+  let d=getData();
+  let today="DATE: "+date();
 
-  if(!d.includes(t)){
-    d += "\n"+t+"\n";
+  if(!d.includes(today)){
+    d+="\n"+today+"\n";
   }
 
-  d += "Site:- "+v+"\n";
+  d+="Site:- "+v+"\n";
   setData(d);
 
   openEntry();
@@ -173,7 +183,7 @@ function saveSite(){
 // ENTRY
 function openEntry(){
   box.innerHTML=`
-    <button class="backBtn" onclick="back()">⬅ Back</button>
+    <button class="backBtn" onclick="backToMain()">⬅ Back</button>
     <input type="time" id="time">
     <button onclick="saveEntry()">Save Entry</button>
   `;
@@ -183,20 +193,18 @@ function saveEntry(){
   let t=time.value;
   if(!t)return alert("Select time");
 
-  let d=getData();
-  d += "Entry:- "+t+"\n";
-  setData(d);
-
+  setData(getData()+`Entry:- ${t}\n`);
   showWorkButtons();
 }
 
-// WORK BUTTONS
+// WORK
 function showWorkButtons(){
   mainBtns.innerHTML=`
     <div class="grid">
       <div class="cardBtn" onclick="openText('Worker')">👷 Worker</div>
       <div class="cardBtn" onclick="openText('Material')">📦 Material</div>
-      <div class="cardBtn" onclick="openText('Note')">📝 Note</div>
+      <div class="cardBtn" onclick="openText('Work Note')">📝 Work Note</div>
+      <div class="cardBtn" onclick="openText('Note')">📓 Note</div>
       <div class="cardBtn exitBtn" onclick="openExit()">🚪 Exit</div>
     </div>
   `;
@@ -217,10 +225,12 @@ function saveText(type){
   let v=txt.value.trim();
   if(!v)return alert("Empty");
 
-  let d=getData();
-  d += `${type}:- ${v}\n`;
-  setData(d);
+  if(type==="Worker"){
+    let names=v.split(",").map(x=>x.trim()).filter(x=>x);
+    v=names.length+" ("+names.join(", ")+")";
+  }
 
+  setData(getData()+`${type}:- ${v}\n`);
   showWorkButtons();
 }
 
@@ -238,11 +248,63 @@ function saveExit(){
   let t=time.value;
   if(!t)return alert("Select time");
 
-  let d=getData();
-  d += "Exit:- "+t+"\n\n";
-  setData(d);
+  setData(getData()+`Exit:- ${t}\n\n`);
+  init();
+}
 
-  init(); // 🔥 reset to start
+// 📊 SHOW DATA (RESTORED)
+function showData(){
+  mainBtns.innerHTML="";
+  box.innerHTML="";
+  dataBox.style.display="block";
+  notebook.style.display="block";
+
+  dataBox.innerHTML=`
+    <button onclick="hideData()">⬅ Hide</button>
+    <button onclick="editData()">✏ Edit</button>
+    <button onclick="copyData()">📋 Copy</button>
+    <button onclick="clearData()">🗑 Clear</button>
+  `;
+
+  notebook.innerText=getData();
+}
+
+function hideData(){
+  dataBox.style.display="none";
+  notebook.style.display="none";
+  init();
+}
+
+// EDIT
+function editData(){
+  let p=prompt("Enter Password","");
+  if(p!=="5252") return alert("Wrong Password");
+
+  box.innerHTML=`
+    <button class="backBtn" onclick="showData()">⬅ Back</button>
+    <textarea id="editBox" style="height:60vh">${getData()}</textarea>
+    <button onclick="saveEdit()">Save</button>
+  `;
+}
+
+function saveEdit(){
+  setData(editBox.value);
+  location.reload();
+}
+
+// COPY
+function copyData(){
+  navigator.clipboard.writeText(getData());
+  alert("Copied!");
+}
+
+// CLEAR
+function clearData(){
+  let p=prompt("Enter Password","");
+  if(p==="5252"){
+    localStorage.removeItem(KEY);
+    location.reload();
+  }else alert("Wrong Password");
 }
 
 </script>
