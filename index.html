@@ -88,7 +88,7 @@ button{
 
 <body>
 
-<div class="header">Site Data</div>
+<div class="header" id="header">Site Data</div>
 
 <div class="card">
   <div id="mainBtns"></div>
@@ -116,21 +116,90 @@ function date(){
   return d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear();
 }
 
-// 🔥 SMART STATE CHECK
+// TIME CONVERT
+function convertTime(t){
+  let [h,m]=t.split(":").map(Number);
+  return h*60 + m;
+}
+
+// 🔥 STATE CHECK (TIME BASED)
 function getState(){
-  let data=getData().trim();
+  let data=getData();
   if(!data) return "START";
 
-  let lines=data.split("\n").reverse();
-  let hasEntry=false;
+  let todayStr="DATE: "+date();
+  let lines=data.split("\n");
+
+  let inToday=false;
+  let entries=[];
+  let exits=[];
 
   for(let line of lines){
-    if(line.startsWith("Exit:-")) return "START";
-    if(line.startsWith("Entry:-")) hasEntry=true;
-    if(line.startsWith("DATE:")) break;
+
+    if(line.startsWith("DATE:")){
+      inToday = (line.trim()===todayStr);
+      continue;
+    }
+
+    if(!inToday) continue;
+
+    if(line.startsWith("Entry:-"))
+      entries.push(convertTime(line.split(":-")[1]));
+
+    if(line.startsWith("Exit:-"))
+      exits.push(convertTime(line.split(":-")[1]));
   }
 
-  return hasEntry ? "WORK" : "START";
+  if(entries.length===0) return "START";
+
+  let lastEntry=entries[entries.length-1];
+  let lastExit=exits.length?exits[exits.length-1]:null;
+
+  if(!lastExit) return "WORK";
+
+  return lastEntry>lastExit ? "WORK" : "START";
+}
+
+// 🔥 STATUS
+function updateStatus(){
+
+  let data=getData();
+  let todayStr="DATE: "+date();
+  let lines=data.split("\n");
+
+  let inToday=false;
+  let entries=[];
+  let exits=[];
+
+  for(let line of lines){
+
+    if(line.startsWith("DATE:")){
+      inToday = (line.trim()===todayStr);
+      continue;
+    }
+
+    if(!inToday) continue;
+
+    if(line.startsWith("Entry:-"))
+      entries.push(line.split(":-")[1].trim());
+
+    if(line.startsWith("Exit:-"))
+      exits.push(line.split(":-")[1].trim());
+  }
+
+  if(entries.length===0){
+    header.innerHTML="Site Data";
+    return;
+  }
+
+  let lastEntry=entries[entries.length-1];
+  let lastExit=exits.length?exits[exits.length-1]:null;
+
+  if(!lastExit || convertTime(lastEntry)>convertTime(lastExit)){
+    header.innerHTML=`🟢 Working (Entry: ${lastEntry})`;
+  }else{
+    header.innerHTML=`🔴 Site Closed`;
+  }
 }
 
 // INIT
@@ -144,6 +213,7 @@ function init(){
   }
 
   box.innerHTML="";
+  updateStatus();
 }
 init();
 
@@ -168,10 +238,10 @@ function saveSite(){
   if(!v)return alert("Enter site");
 
   let d=getData();
-  let today="DATE: "+date();
+  let todayStr="DATE: "+date();
 
-  if(!d.includes(today)){
-    d+="\n"+today+"\n";
+  if(!d.includes(todayStr)){
+    d+="\n"+todayStr+"\n";
   }
 
   d+="Site:- "+v+"\n";
@@ -194,6 +264,7 @@ function saveEntry(){
   if(!t)return alert("Select time");
 
   setData(getData()+`Entry:- ${t}\n`);
+  updateStatus();
   showWorkButtons();
 }
 
@@ -234,7 +305,7 @@ function saveText(type){
   showWorkButtons();
 }
 
-// EXIT
+// EXIT (VALIDATED)
 function openExit(){
   mainBtns.innerHTML="";
   box.innerHTML=`
@@ -248,11 +319,36 @@ function saveExit(){
   let t=time.value;
   if(!t)return alert("Select time");
 
+  let data=getData();
+  let todayStr="DATE: "+date();
+  let lines=data.split("\n");
+
+  let inToday=false;
+  let lastEntry=null;
+
+  for(let line of lines){
+
+    if(line.startsWith("DATE:")){
+      inToday=(line.trim()===todayStr);
+      continue;
+    }
+
+    if(!inToday) continue;
+
+    if(line.startsWith("Entry:-"))
+      lastEntry=line.split(":-")[1].trim();
+  }
+
+  if(lastEntry && convertTime(t)<convertTime(lastEntry)){
+    return alert("⚠️ Exit time cannot be before Entry");
+  }
+
   setData(getData()+`Exit:- ${t}\n\n`);
+  updateStatus();
   init();
 }
 
-// 📊 SHOW DATA (RESTORED)
+// SHOW DATA
 function showData(){
   mainBtns.innerHTML="";
   box.innerHTML="";
